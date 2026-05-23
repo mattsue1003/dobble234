@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>形狀配對 · 嗒寶式桌遊生成器</title>
+<title>嗒寶式配對卡生成器 · 形狀／數字／文字</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet">
@@ -497,6 +497,32 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   .seg button.active{background:var(--surface);color:var(--primary);box-shadow:0 1px 3px rgba(40,30,15,.1);}
   .seg button:active{transform:scale(.97);}
 
+  /* Mode panel: tall buttons with icon + label */
+  .mode-panel .seg{padding:6px;gap:6px;}
+  .mode-panel .seg button{
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+    padding:14px 4px 12px;font-size:14px;
+  }
+  .mode-panel .seg button .mode-glyph{
+    width:34px;height:34px;border-radius:50%;
+    background:var(--bg);color:var(--ink-2);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:900;font-size:16px;
+    border:1.5px solid var(--line-2);
+    transition:all .15s ease;
+  }
+  .mode-panel .seg button.active .mode-glyph{
+    background:var(--primary);color:#fff;border-color:var(--primary);
+  }
+  /* Shape glyph: a small filled diamond shape via CSS */
+  .mode-panel .seg button .mode-glyph.mode-shape::before{
+    content:'';width:16px;height:16px;background:currentColor;
+    clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);
+    display:block;
+  }
+  .mode-panel .seg button .mode-glyph.mode-digit{letter-spacing:-1px;}
+  .mode-panel .seg button .mode-label{font-weight:700;}
+
   .stepper{
     display:flex;align-items:center;gap:0;
     background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius-m);
@@ -638,15 +664,40 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 <body>
 
 <header class="hero">
-  <span class="kicker">嗒寶式 · 形狀配對</span>
-  <h1>形狀配對桌遊生成器</h1>
-  <p class="sub">任兩張卡片之間，永遠只有一個圖案是相同的——最快指出來的人獲勝。</p>
+  <span class="kicker">嗒寶式 · 三合一配對卡</span>
+  <h1>嗒寶式配對卡生成器</h1>
+  <p class="sub">任兩張卡片之間，永遠只有一個<span id="hero-item">圖案</span>是相同的——最快指出來的人獲勝。</p>
   <span class="credit">設計者：愛迪樂 鍾孟修 職能治療師</span>
 </header>
 
 <div class="layout">
 
 <div class="col-controls">
+
+<!-- Controls: Mode (NEW for merged version) -->
+<section class="panel mode-panel">
+  <div class="panel-head">
+    <h2>圖案類型</h2>
+    <span class="badge" id="mode-badge">形狀</span>
+  </div>
+  <div class="panel-body">
+    <div class="seg cols-3" id="seg-mode">
+      <button data-mode="shape" class="active">
+        <span class="mode-glyph mode-shape"></span>
+        <span class="mode-label">形狀</span>
+      </button>
+      <button data-mode="digit">
+        <span class="mode-glyph mode-digit">12</span>
+        <span class="mode-label">數字</span>
+      </button>
+      <button data-mode="char">
+        <span class="mode-glyph mode-char">日</span>
+        <span class="mode-label">文字</span>
+      </button>
+    </div>
+    <div class="diff-info" id="mode-info"></div>
+  </div>
+</section>
 
 <!-- Controls: Difficulty -->
 <section class="panel">
@@ -701,7 +752,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     <div class="switch-row">
       <div class="label-group">
         <span class="label">旋轉變化</span>
-        <span class="hint">每個圖案隨機旋轉，增加視覺掃描難度</span>
+        <span class="hint">每個圖案／字符隨機旋轉，增加視覺掃描難度</span>
       </div>
       <div class="toggle on" id="tog-rotate"></div>
     </div>
@@ -714,8 +765,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     </div>
     <div class="switch-row">
       <div class="label-group">
-        <span class="label">附符號對照表</span>
-        <span class="hint">PDF 末頁列出本場所有圖案</span>
+        <span class="label">附對照表</span>
+        <span class="hint">PDF 末頁列出本場所有圖案 / 字符</span>
       </div>
       <div class="toggle on" id="tog-key"></div>
     </div>
@@ -794,6 +845,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 /* -------------------- 0. 全域狀態 -------------------- */
 const STATE = {
+  mode: 'shape',              // 'shape' | 'digit' | 'char'  ← NEW
   n: 3,                       // Dobble 階數
   cardShape: 'circle',        // 'circle' | 'square'
   grid: '2x3',                // '2x2' | '2x3' | '3x3'
@@ -805,11 +857,63 @@ const STATE = {
   seed: '20260523',
 };
 
+const MODE_TABLE = {
+  shape: {
+    label: '形狀',
+    item: '圖案',
+    cardTitle: '形狀配對卡',
+    keyTitle: '符號對照表',
+    rulesTitle: '形狀配對 桌遊',
+    filePrefix: '形狀配對',
+    intro: '12 種幾何形狀（圓、方、三角、星、心、菱、六角、十字、月、太陽、雲、箭）× 6 色變化。訓練視覺辨識與形狀恆常。',
+  },
+  digit: {
+    label: '數字',
+    item: '數字',
+    cardTitle: '數字配對卡',
+    keyTitle: '數字對照表',
+    rulesTitle: '數字配對 桌遊',
+    filePrefix: '數字配對',
+    intro: '純阿拉伯數字 1 ～ N。簡易為 1-7 全單位數，挑戰擴展到 1-57 兩位數。訓練數字辨識、唱數、雙位數識讀。',
+  },
+  char: {
+    label: '文字',
+    item: '字符',
+    cardTitle: '文字配對卡',
+    keyTitle: '字符對照表',
+    rulesTitle: '文字配對 桌遊',
+    filePrefix: '文字配對',
+    intro: '57 個常用單字漢字（身體、自然、方位、季節、動物、生活、家人）。訓練識字與閱讀。',
+  },
+};
+
 const DIFF_TABLE = {
-  2: { sym: 3, cards: 7,  label: '簡易', hint: '每張 3 個圖案，共 7 張卡。適合初接觸者、學齡前兒童或重度認知障礙長者。' },
-  3: { sym: 4, cards: 13, label: '普通', hint: '每張 4 個圖案，共 13 張卡。適合輕度認知訓練、學齡兒童。' },
-  5: { sym: 6, cards: 31, label: '困難', hint: '每張 6 個圖案，共 31 張卡。中度視覺掃描挑戰，適合青壯年或進階長者。' },
-  7: { sym: 8, cards: 57, label: '挑戰', hint: '每張 8 個圖案，共 57 張卡。等同原版嗒寶，高強度視覺處理訓練。' },
+  2: { sym: 3, cards: 7,  label: '簡易' },
+  3: { sym: 4, cards: 13, label: '普通' },
+  5: { sym: 6, cards: 31, label: '困難' },
+  7: { sym: 8, cards: 57, label: '挑戰' },
+};
+
+// 難度說明依「模式 × 階級」變化
+const DIFF_HINTS = {
+  shape: {
+    2: '每張 3 個圖案，共 7 張卡。適合學齡前兒童或重度認知障礙長者。',
+    3: '每張 4 個圖案，共 13 張卡。適合學齡兒童、輕度認知訓練。',
+    5: '每張 6 個圖案，共 31 張卡。中度視覺掃描挑戰。',
+    7: '每張 8 個圖案，共 57 張卡。等同原版嗒寶，高強度視覺處理。',
+  },
+  digit: {
+    2: '每張 3 個數字（1-7），共 7 張卡。純單位數，適合幼兒、初學數字者。',
+    3: '每張 4 個數字（1-13），共 13 張卡。引入雙位數，學齡兒童適用。',
+    5: '每張 6 個數字（1-31），共 31 張卡。雙位數識讀進階。',
+    7: '每張 8 個數字（1-57），共 57 張卡。完整雙位數範圍。',
+  },
+  char: {
+    2: '每張 3 個漢字，共 7 張卡。基礎識字訓練。',
+    3: '每張 4 個漢字，共 13 張卡。常用字辨識與配對。',
+    5: '每張 6 個漢字，共 31 張卡。進階識字。',
+    7: '每張 8 個漢字，共 57 張卡。完整 57 字庫。',
+  },
 };
 
 const GRID_TABLE = {
@@ -826,6 +930,17 @@ const COLORS = [
   '#7B4FA0', // 紫
   '#C77124', // 橙
 ];
+
+// 純文字模式專用字符庫（57 個常用單字漢字，不含數字、不含中文數字）
+const CHARS_ONLY = [
+  '人','口','手','足',                                                              // 4 身體
+  '山','水','火','木','土','田','風','雨','雲','日','月','星','天','海','雪',       // 15 自然
+  '大','小','上','下','左','右','中','多','少','高',                                // 10 方位／大小
+  '春','夏','秋','冬','年',                                                         // 5 時間
+  '牛','馬','鳥','魚','龍','虎','兔','鹿',                                          // 8 動物
+  '家','門','車','米','茶','飯','衣','鞋','帽','書',                                // 10 生活
+  '友','父','母','兄','弟',                                                         // 5 家人
+];  // = 57
 
 /* -------------------- 1. 種子隨機 -------------------- */
 // 將字串種子哈希為 32-bit 整數
@@ -998,40 +1113,97 @@ const SHAPE_DRAW = [
 
 const NUM_SHAPES = SHAPE_DRAW.length;     // 12
 const NUM_COLORS = COLORS.length;         // 6
-const TOTAL_DESIGNS = NUM_SHAPES * NUM_COLORS * 2; // 144 (含填色/外框)
 
-// idx → 具體圖案規格
-function designForIndex(idx){
-  // 0..71 = 填色；72..143 = 外框
-  const fill = idx < NUM_SHAPES * NUM_COLORS;
-  const sub = fill ? idx : idx - NUM_SHAPES * NUM_COLORS;
-  const shape = sub % NUM_SHAPES;
-  const color = Math.floor(sub / NUM_SHAPES) % NUM_COLORS;
-  return { shape, color, fill };
-}
+// 當前牌組對應的設計表（每次 buildDeck 重新計算）。
+// 每個 entry 形式：
+//   形狀模式：{ shape:int, color:int, fill:bool }
+//   文字/數字模式：{ char:string, colorIdx:int }
+let CURRENT_DESIGN_MAP = [];
 
-// 繪製單一圖案於指定畫布座標
-function drawSymbol(ctx, designIdx, x, y, size, rotation){
-  const { shape, color, fill } = designForIndex(designIdx);
+// 主繪製入口：dispatch by design 類型
+function drawSymbol(ctx, ref, x, y, size, rotation){
+  // ref 可為符號索引（整數，查 CURRENT_DESIGN_MAP）或設計物件
+  let design;
+  if (typeof ref === 'number') design = CURRENT_DESIGN_MAP[ref];
+  else if (ref && typeof ref === 'object') design = ref;
+  if (!design) return;
+
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rotation || 0);
+
+  if (design.shape !== undefined){
+    drawShapeDesign(ctx, design, size);
+  } else if (design.char !== undefined){
+    drawTextDesign(ctx, design, size);
+  }
+  ctx.restore();
+}
+
+// 形狀模式繪製
+function drawShapeDesign(ctx, design, size){
+  const { shape, color, fill } = design;
   SHAPE_DRAW[shape](ctx, size);
   if (fill){
     ctx.fillStyle = COLORS[color];
     ctx.fill();
-    // 加上深色細邊強化辨識
     ctx.strokeStyle = 'rgba(0,0,0,.18)';
-    ctx.lineWidth = Math.max(size*0.025, 1);
+    ctx.lineWidth = Math.max(size * 0.025, 1);
     ctx.stroke();
   } else {
     ctx.strokeStyle = COLORS[color];
-    ctx.lineWidth = Math.max(size*0.10, 2);
+    ctx.lineWidth = Math.max(size * 0.10, 2);
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.stroke();
   }
-  ctx.restore();
+}
+
+// 文字/數字模式繪製：彩色圓底 + 白字
+function drawTextDesign(ctx, design, size){
+  const { char, colorIdx } = design;
+  const color = COLORS[colorIdx];
+
+  // 彩色圓底
+  ctx.beginPath();
+  ctx.arc(0, 0, size * 0.5, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.22)';
+  ctx.lineWidth = Math.max(size * 0.025, 1);
+  ctx.stroke();
+
+  // 字體大小依字符長度調整
+  const len = char.length;
+  const isAscii = len === 1 && /^[0-9A-Za-z]$/.test(char);
+  let fontSize;
+  if (len === 1)      fontSize = isAscii ? size * 0.72 : size * 0.62;
+  else if (len === 2) fontSize = size * 0.50;     // 雙位數
+  else                fontSize = size * 0.40;     // 防呆
+
+  ctx.font = `900 ${fontSize}px "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif`;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // 漢字基線通常需微調下沉
+  const yOffset = isAscii ? size * 0.02 : (len === 1 ? size * 0.04 : 0);
+  ctx.fillText(char, 0, yOffset);
+
+  // 為含 6 或 9 的數字加底線（樂透球／骰子慣例）
+  // 避免 6 ↔ 9 視覺混淆（兩者粗體下幾乎鏡像對稱）
+  // 整個數字加一條底線標示「這邊是底」
+  if (/^[0-9]+$/.test(char) && /[69]/.test(char)){
+    const w = ctx.measureText(char).width;
+    const underlineY = yOffset + fontSize * 0.36;
+    const underlineLen = Math.min(w * 0.85, fontSize * 0.85);
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = Math.max(fontSize * 0.08, 2);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-underlineLen / 2, underlineY);
+    ctx.lineTo( underlineLen / 2, underlineY);
+    ctx.stroke();
+  }
 }
 
 /* -------------------- 4. 卡片版面 -------------------- */
@@ -1187,32 +1359,45 @@ function buildDeck(state){
   const n = state.n;
   const cards = dobbleDeck(n);            // 原始 0..N-1 索引
   const totalSym = n*n + n + 1;
-
-  // 設計分配策略：形狀優先（shape-first）
-  //   先用完所有 12 種形狀（每張用不同形狀），再開始用第二種變體（色 / 填法）
-  //   ⇒ 簡易 (7 符號) 保證全部不同形狀
-  //   ⇒ 普通 (13 符號) 仍保留 12 種不同形狀 + 僅 1 個形狀重複
-  //   ⇒ 困難 / 挑戰：重複出現但搭配不同色/填法
   const rng = makeRng(state.seed, 'palette');
-  const shapeOrder = shuffle(Array.from({length: NUM_SHAPES}, (_, i) => i), rng);
-  // 12 種「變體」=（色, 填法）組合
-  const variants = [];
-  for (let f = 0; f < 2; f++) for (let c = 0; c < NUM_COLORS; c++) variants.push({ color: c, fill: f === 0 });
-  const variantOrder = shuffle(variants, rng);
 
-  const designMap = [];
-  for (let i = 0; i < totalSym; i++){
-    const shape = shapeOrder[i % NUM_SHAPES];
-    const v = variantOrder[Math.floor(i / NUM_SHAPES) % variants.length];
-    const fillOffset = v.fill ? 0 : (NUM_SHAPES * NUM_COLORS);  // 0 or 72
-    const designIdx = fillOffset + v.color * NUM_SHAPES + shape;
-    designMap.push(designIdx);
+  let designMap;
+
+  if (state.mode === 'shape'){
+    // 形狀優先（shape-first）：n=2 確保 7 種不同形狀
+    const shapeOrder = shuffle(Array.from({length: NUM_SHAPES}, (_, i) => i), rng);
+    const variants = [];
+    for (let f = 0; f < 2; f++)
+      for (let c = 0; c < NUM_COLORS; c++)
+        variants.push({ color: c, fill: f === 0 });
+    const variantOrder = shuffle(variants, rng);
+
+    designMap = [];
+    for (let i = 0; i < totalSym; i++){
+      const shape = shapeOrder[i % NUM_SHAPES];
+      const v = variantOrder[Math.floor(i / NUM_SHAPES) % variants.length];
+      designMap.push({ shape, color: v.color, fill: v.fill });
+    }
+  } else if (state.mode === 'digit'){
+    // 純阿拉伯數字 1 ~ totalSym（最多 1-57）。種子決定打亂順序。
+    const nums = Array.from({length: totalSym}, (_, i) => String(i + 1));
+    const shuffled = shuffle(nums, rng);
+    designMap = shuffled.map((char, i) => ({ char, colorIdx: i % NUM_COLORS }));
+  } else if (state.mode === 'char'){
+    // 純漢字模式：從 CHARS_ONLY 中由種子打亂後取前 totalSym 個
+    const shuffled = shuffle(CHARS_ONLY, rng);
+    designMap = shuffled.slice(0, totalSym).map((char, i) => ({
+      char, colorIdx: i % NUM_COLORS
+    }));
   }
 
-  // 卡片內符號順序也打亂一次（避免每張卡的視覺順序相同）
+  CURRENT_DESIGN_MAP = designMap;   // drawSymbol 透過此 map 解析索引
+
+  // 卡片內符號順序也打亂（避免每張卡的視覺順序相同）
+  // finalCards[k] = [0..totalSym-1] 內的 N+1 個整數
   const finalCards = cards.map((card, idx) => {
     const r2 = makeRng(state.seed, 'order|' + idx);
-    return shuffle(card, r2).map(symIdx => designMap[symIdx]);
+    return shuffle(card, r2);
   });
 
   return { cards: finalCards, designMap, totalSym };
@@ -1259,7 +1444,7 @@ function refreshPreview(){
   const cardPages = Math.ceil(deck.cards.length / cardsPerPage) * STATE.copies;
   const extraPages = (STATE.includeRules ? 1 : 0) + (STATE.includeKey ? Math.ceil(deck.totalSym / 24) : 0);
   document.getElementById('meta-deck').textContent =
-    `一副 ${diff.cards} 張 · 每張 ${diff.sym} 個圖案`;
+    `一副 ${diff.cards} 張 · 每張 ${diff.sym} 個${MODE_TABLE[STATE.mode].item}`;
   document.getElementById('meta-pages').textContent =
     `${STATE.copies} 份共 ${cardPages + extraPages} 頁 PDF`;
   document.getElementById('prev-info').textContent =
@@ -1315,7 +1500,7 @@ async function exportPDF(){
         if (posInPage === 0){
           if (pageNo > 0) pdf.addPage();
           pageNo++;
-          drawPageHeader(pdf, `形狀配對卡 · 第 ${copy+1} 份 · 第 ${Math.floor(i/cardsPerPage)+1} 頁`);
+          drawPageHeader(pdf, `${MODE_TABLE[STATE.mode].cardTitle} · 第 ${copy+1} 份 · 第 ${Math.floor(i/cardsPerPage)+1} 頁`);
         }
         const col = posInPage % cols;
         const row = Math.floor(posInPage / cols);
@@ -1361,7 +1546,7 @@ async function exportPDF(){
       drawKeyPage(pdf, deck);
     }
 
-    const filename = `形狀配對_${DIFF_TABLE[STATE.n].label}_${STATE.seed}.pdf`;
+    const filename = `${MODE_TABLE[STATE.mode].filePrefix}_${DIFF_TABLE[STATE.n].label}_${STATE.seed}.pdf`;
     pdf.save(filename);
   } catch (err) {
     console.error(err);
@@ -1419,42 +1604,67 @@ function drawRulesPage(pdf){
   cx.fillRect(0, 0, c.width, c.height);
 
   // Title block
+  const mode = MODE_TABLE[STATE.mode];
   cx.fillStyle = '#22201D';
   cx.font = 'bold 78px "Noto Serif TC", serif';
-  cx.fillText('形狀配對 桌遊', 100, 200);
+  cx.fillText(mode.rulesTitle, 100, 200);
   cx.font = '600 38px "Noto Sans TC", sans-serif';
   cx.fillStyle = '#C9522F';
   cx.fillText('嗒寶 (Dobble / Spot it!) 玩法', 100, 270);
+
+  // 依模式選擇 OT 應用列表與動詞
+  const verb = STATE.mode === 'shape' ? '說出' : '讀出';
+  const otByMode = {
+    shape: [
+      '視覺掃描 (visual scanning)',
+      '視覺辨識與形狀恆常 (form constancy)',
+      '反應抑制 (response inhibition)',
+      '注意力分配 (selective & divided attention)',
+      '手指指物動作 (fine motor pointing)',
+    ],
+    digit: [
+      '視覺掃描 (visual scanning)',
+      '數字辨識 (number recognition)',
+      '唱數與雙位數識讀 (counting & two-digit reading)',
+      '反應抑制 (response inhibition)',
+      '注意力分配 (selective & divided attention)',
+      '口語表達與發音 (verbal expression)',
+    ],
+    char: [
+      '視覺掃描 (visual scanning)',
+      '字符辨識 (character recognition)',
+      '識字與閱讀 (literacy & reading)',
+      '詞彙提取 (vocabulary retrieval)',
+      '反應抑制 (response inhibition)',
+      '口語表達與發音 (verbal expression)',
+    ],
+  };
 
   cx.fillStyle = '#5B544C';
   cx.font = '400 28px "Noto Sans TC", sans-serif';
   const lines = [
     '【核心規則】',
-    '任意兩張卡片之間，永遠只有一個圖案是相同的。',
-    '最快指出並說出該圖案的玩家獲勝。',
+    `任意兩張卡片之間，永遠只有一個${mode.item}是相同的。`,
+    `最快指出並${verb}該${mode.item}的玩家獲勝。`,
     '',
     '【基礎玩法 · 雙人～多人】',
     '1. 將所有卡片洗勻，正面朝下放置。',
     '2. 翻出兩張卡，所有人同時觀察。',
-    '3. 第一位指出兩張卡上「相同圖案」的人，獲得該卡。',
+    `3. 第一位指出並${verb}兩張卡上「相同${mode.item}」的人獲得該卡。`,
     '4. 繼續翻牌，最後拿到最多卡的人獲勝。',
     '',
     '【職能治療應用建議】',
-    '視覺掃描 (visual scanning)',
-    '視覺辨識與形狀恆常 (form constancy)',
-    '反應抑制 (response inhibition)',
-    '注意力分配 (selective & divided attention)',
-    '手指指物動作 (fine motor pointing)',
+    ...otByMode[STATE.mode],
     '',
     '【難度調整】',
-    '初階：拿出兩張卡比對即可。',
-    '中階：改為「燙手山芋」——一張中央卡，每人手上一張，',
-    '       誰先說出相同圖案誰把手上的卡丟到中央。',
-    '進階：限時 / 計時 / 雙語複誦圖案名稱。',
+    `初階：拿出兩張卡比對，找出共同${mode.item}即可。`,
+    '中階：「燙手山芋」——中央一張卡，每人手上一張，',
+    `       誰先${verb}共同${mode.item}就把手上的卡丟到中央。`,
+    '進階：開啟「旋轉變化」；或限時 / 計時 / 念出組詞。',
     '',
     '【建議使用對象】',
     '學齡前～學齡兒童 · 認知正常長者 · 輕至中度認知障礙長者',
-    '（依難度等級調整：簡易 3 圖 / 普通 4 圖 / 困難 6 圖 / 挑戰 8 圖）',
+    `（依難度等級調整：簡易 3 / 普通 4 / 困難 6 / 挑戰 8 個${mode.item}）`,
   ];
   let y = 360;
   for (const line of lines){
@@ -1467,7 +1677,7 @@ function drawRulesPage(pdf){
       cx.font = '400 28px "Noto Sans TC", sans-serif';
     }
     cx.fillText(line, 100, y);
-    y += 44;
+    y += 42;
   }
 
   // Footer credit
@@ -1480,37 +1690,52 @@ function drawRulesPage(pdf){
 }
 
 function drawKeyPage(pdf, deck){
-  const W = 210, H = 297;
-  drawPageHeader(pdf, '符號對照表');
-
   // 取得所有用到的設計
   const used = Array.from(new Set(deck.cards.flat()));
   used.sort((a,b) => a-b);
 
-  // 以畫布渲染對照表（中文 + 圖案）
+  // 版面參數：6 欄 × 8 列 = 每頁 48 個。若超過則自動分頁
+  const COLS = 6;
+  const ROWS_PER_PAGE = 8;
+  const PER_PAGE = COLS * ROWS_PER_PAGE;
+  const totalPages = Math.ceil(used.length / PER_PAGE);
+
+  for (let p = 0; p < totalPages; p++){
+    if (p > 0) pdf.addPage();
+    const start = p * PER_PAGE;
+    const end = Math.min(start + PER_PAGE, used.length);
+    const slice = used.slice(start, end);
+    drawKeyPageSlice(pdf, slice, start, p, totalPages, used.length);
+  }
+}
+
+function drawKeyPageSlice(pdf, slice, startIdx, pageIdx, totalPages, totalCount){
+  const W = 210, H = 297;
+  const titleSuffix = totalPages > 1 ? `（${pageIdx+1} / ${totalPages}）` : '';
+  drawPageHeader(pdf, MODE_TABLE[STATE.mode].keyTitle + titleSuffix);
+
   const c = document.createElement('canvas');
   c.width = 1400; c.height = 1900;
   const cx = c.getContext('2d');
   cx.fillStyle = '#FFFFFF';
-  cx.fillRect(0,0,c.width,c.height);
+  cx.fillRect(0, 0, c.width, c.height);
 
   cx.fillStyle = '#22201D';
   cx.font = '700 56px "Noto Serif TC", serif';
-  cx.fillText('符號對照表', 80, 130);
+  cx.fillText(MODE_TABLE[STATE.mode].keyTitle + titleSuffix, 80, 130);
   cx.fillStyle = '#5B544C';
   cx.font = '400 26px "Noto Sans TC", sans-serif';
-  cx.fillText(`本場共 ${used.length} 個獨特圖案 · 種子 ${STATE.seed}`, 80, 175);
+  cx.fillText(`本場共 ${totalCount} 個獨特${MODE_TABLE[STATE.mode].item} · 種子 ${STATE.seed}`, 80, 175);
 
-  // 6 cols × N rows grid
   const COLS = 6;
   const cellW = (c.width - 160) / COLS;
-  const cellH = 200;
+  const cellH = 180;
   const startY = 220;
-  used.forEach((idx, i) => {
+  slice.forEach((idx, i) => {
     const col = i % COLS;
     const row = Math.floor(i / COLS);
     const cx0 = 80 + col * cellW + cellW/2;
-    const cy0 = startY + row * cellH + 80;
+    const cy0 = startY + row * cellH + 70;
 
     // 背景方塊
     cx.fillStyle = '#FAF6EE';
@@ -1520,17 +1745,17 @@ function drawKeyPage(pdf, deck){
     cx.fill();
     cx.stroke();
 
-    // 畫符號（用 70px）
+    // 畫符號
     cx.save();
     cx.translate(cx0, cy0);
-    drawSymbol(cx, idx, 0, 0, 90, 0);
+    drawSymbol(cx, idx, 0, 0, 85, 0);
     cx.restore();
 
-    // 編號
+    // 編號（用 startIdx 累加得到全副中的編號）
     cx.fillStyle = '#5B544C';
     cx.font = '600 22px "Noto Sans TC", sans-serif';
     cx.textAlign = 'center';
-    cx.fillText(`#${i+1}`, cx0, cy0 + 70);
+    cx.fillText(`#${startIdx + i + 1}`, cx0, cy0 + 60);
     cx.textAlign = 'left';
   });
 
@@ -1583,15 +1808,36 @@ function bindToggle(togId, key){
 }
 
 function refreshUI(){
-  // diff info
+  const mode = MODE_TABLE[STATE.mode];
   const d = DIFF_TABLE[STATE.n];
+
+  // 主標題副標 / kicker 更新
+  document.getElementById('hero-item').textContent = mode.item;
+
+  // 模式說明
+  document.getElementById('mode-badge').textContent = mode.label;
+  document.getElementById('mode-info').innerHTML =
+    `<b>${mode.label}模式</b>　${mode.intro}`;
+
+  // 難度說明（依模式變化）
   document.getElementById('diff-badge').textContent = d.label;
   document.getElementById('diff-info').innerHTML =
-    `<b>${d.label}</b>　${d.hint}`;
+    `<b>${d.label}</b>　${DIFF_HINTS[STATE.mode][STATE.n]}`;
+
   refreshPreview();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // 模式切換
+  document.getElementById('seg-mode').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    document.querySelectorAll('#seg-mode button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    STATE.mode = btn.dataset.mode;
+    refreshUI();
+  });
+
   bindSeg('seg-diff', 'n', v => parseInt(v));
   bindSeg('seg-shape', 'cardShape');
   bindSeg('seg-grid', 'grid');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>嗒寶式配對卡生成器 · 形狀／數字／文字</title>
+<title>找找配對卡生成器 · 形狀／數字／文字</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet">
@@ -664,8 +664,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 <body>
 
 <header class="hero">
-  <span class="kicker">嗒寶式 · 三合一配對卡</span>
-  <h1>嗒寶式配對卡生成器</h1>
+  <span class="kicker">三合一 · 找找配對</span>
+  <h1>找找配對卡生成器</h1>
   <p class="sub">任兩張卡片之間，永遠只有一個<span id="hero-item">圖案</span>是相同的——最快指出來的人獲勝。</p>
   <span class="credit">設計者：愛迪樂 鍾孟修 職能治療師</span>
 </header>
@@ -839,14 +839,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 <script>
 /* ================================================================
-   形狀配對 · 嗒寶式桌遊生成器
+   找找配對卡生成器
    設計者：愛迪樂 鍾孟修 職能治療師
    ================================================================ */
 
 /* -------------------- 0. 全域狀態 -------------------- */
 const STATE = {
   mode: 'shape',              // 'shape' | 'digit' | 'char'  ← NEW
-  n: 3,                       // Dobble 階數
+  n: 3,                       // 階數（n²+n+1 = 卡片數）
   cardShape: 'circle',        // 'circle' | 'square'
   grid: '2x3',                // '2x2' | '2x3' | '3x3'
   rotate: true,
@@ -900,7 +900,7 @@ const DIFF_HINTS = {
     2: '每張 3 個圖案，共 7 張卡。適合學齡前兒童或重度認知障礙長者。',
     3: '每張 4 個圖案，共 13 張卡。適合學齡兒童、輕度認知訓練。',
     5: '每張 6 個圖案，共 31 張卡。中度視覺掃描挑戰。',
-    7: '每張 8 個圖案，共 57 張卡。等同原版嗒寶，高強度視覺處理。',
+    7: '每張 8 個圖案，共 57 張卡。完整 57 圖案庫，高強度視覺處理。',
   },
   digit: {
     2: '每張 3 個數字（1-7），共 7 張卡。純單位數，適合幼兒、初學數字者。',
@@ -973,7 +973,7 @@ function shuffle(arr, rng){
   return a;
 }
 
-/* -------------------- 2. Dobble 數學構造 -------------------- */
+/* -------------------- 2. 配對卡數學構造（有限投影平面）-------------------- */
 // 對於質數 n，產生 n²+n+1 張卡，每張 n+1 個符號
 function dobbleDeck(n){
   const cards = [];
@@ -1610,7 +1610,7 @@ function drawRulesPage(pdf){
   cx.fillText(mode.rulesTitle, 100, 200);
   cx.font = '600 38px "Noto Sans TC", sans-serif';
   cx.fillStyle = '#C9522F';
-  cx.fillText('嗒寶 (Dobble / Spot it!) 玩法', 100, 270);
+  cx.fillText('找找配對玩法', 100, 270);
 
   // 依模式選擇 OT 應用列表與動詞
   const verb = STATE.mode === 'shape' ? '說出' : '讀出';
